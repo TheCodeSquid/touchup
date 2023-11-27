@@ -26,6 +26,11 @@ public class TouchUp implements ClientModInitializer {
         return new Identifier("touchup", path);
     }
 
+    // FIXME: works with sodium, but not when certain shaders are enabled?
+    // - BSL: invisible
+    // - Complementary: invisible
+    // - Super Duper Vanilla: works
+
     public static void renderFlame(
         float tickDelta,
         MatrixStack matrices,
@@ -36,12 +41,11 @@ public class TouchUp implements ClientModInitializer {
 
         matrices.push();
 
-        matrices.scale(0.7F, 0.7F, 0.7F);
         matrices.multiply(Axis.Y_POSITIVE.rotationDegrees(MathHelper.lerp(tickDelta, entity.prevYaw, entity.getYaw()) - 90F));
         matrices.multiply(Axis.Z_POSITIVE.rotationDegrees(MathHelper.lerp(tickDelta, entity.prevPitch, entity.getPitch()) + 90F));
 
-        var age = ((float) entity.age) * 15F;
-        matrices.multiply(Axis.Y_POSITIVE.rotationDegrees(45F - MathHelper.lerp(tickDelta, age - 1F, age)));
+        var age = ((float) entity.age) * 20F;
+        matrices.multiply(Axis.Y_POSITIVE.rotationDegrees(45F - MathHelper.lerp(tickDelta, age - 20F, age)));
 
         for (var i = 0; i < 4; i++) {
             var minU = sprite.getMinU();
@@ -53,13 +57,13 @@ public class TouchUp implements ClientModInitializer {
 
             var vertices = vertexConsumers.getBuffer(TexturedRenderLayers.getEntityCutout());
             var entry = matrices.peek();
-            drawFlameVertex(entry, vertices, 0.5F, 0.0F, 0F, maxU, maxV);
-            drawFlameVertex(entry, vertices, -0.5F, 0.0F, 0F, minU, maxV);
+            drawFlameVertex(entry, vertices, 0.5F, -0.2F, 0F, maxU, maxV);
+            drawFlameVertex(entry, vertices, -0.5F, -0.2F, 0F, minU, maxV);
             drawFlameVertex(entry, vertices, -0.5F, 1.4F, -0.4F, minU, minV);
             drawFlameVertex(entry, vertices, 0.5F, 1.4F, -0.4F, maxU, minV);
 
-            drawFlameVertex(entry, vertices, 0.5F, 0.0F, 0F, maxU, maxV);
-            drawFlameVertex(entry, vertices, -0.5F, 0.0F, 0F, minU, maxV);
+            drawFlameVertex(entry, vertices, 0.5F, -0.2F, 0F, maxU, maxV);
+            drawFlameVertex(entry, vertices, -0.5F, -0.2F, 0F, minU, maxV);
             drawFlameVertex(entry, vertices, -0.5F, 1.4F, 0.4F, minU, minV);
             drawFlameVertex(entry, vertices, 0.5F, 1.4F, 0.4F, maxU, minV);
         }
@@ -68,6 +72,6 @@ public class TouchUp implements ClientModInitializer {
     }
 
     private static void drawFlameVertex(MatrixStack.Entry entry, VertexConsumer vertices, float x, float y, float z, float u, float v) {
-        vertices.vertex(entry.getModel(), x, y, z).color(0xFFFFFF).uv(u, v).overlay(0, 10).light(240).normal(entry.getNormal(), 0F, 1F, 0F).next();
+        vertices.vertex(entry.getModel(), x, y, z).color(0xFFFFFF).uv(u, v).overlay(0, 10).light(255).normal(entry.getNormal(), 0F, 1F, 0F).next();
     }
 }
