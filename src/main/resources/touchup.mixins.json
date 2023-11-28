@@ -4,7 +4,8 @@
   "package": "me.codesquid.touchup.mixin",
   "compatibilityLevel": "JAVA_17",
   "client": [
-    "PersistentProjectileEntityAccessor",
+    "ParticleManagerMixin",
+    "PersistentProjectileEntityMixin",
     "EntityRenderDispatcherMixin"
   ],
   "injectors": {

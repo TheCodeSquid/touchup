@@ -1,77 +1,73 @@
 package me.codesquid.touchup;
 
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
-import net.minecraft.client.render.TexturedRenderLayers;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.resource.Material;
-import net.minecraft.client.util.math.MatrixStack;
+import me.codesquid.touchup.particle.FlameStreakParticleEffect;
+import me.codesquid.touchup.registry.TouchUpParticles;
+import me.codesquid.touchup.util.PersistentProjectileEntityExt;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.projectile.PersistentProjectileEntity;
-import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.Axis;
-import net.minecraft.util.math.MathHelper;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import org.quiltmc.loader.api.ModContainer;
 import org.quiltmc.qsl.base.api.entrypoint.client.ClientModInitializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TouchUp implements ClientModInitializer {
-    public static final Material FLAME = new Material(PlayerScreenHandler.BLOCK_ATLAS_TEXTURE, id("block/flame"));
-
     @Override
     public void onInitializeClient(ModContainer mod) {
-        ModelLoadingPlugin.register(ctx -> ctx.addModels(id("block/flame")));
+        TouchUpParticles.init();
     }
 
-    private static Identifier id(String path) {
+    public static Identifier id(String path) {
         return new Identifier("touchup", path);
     }
 
-    // FIXME: works with sodium, but not when certain shaders are enabled?
-    // - BSL: invisible
-    // - Complementary: invisible
-    // - Super Duper Vanilla: works
+    public static boolean shouldRenderFireTrail(PersistentProjectileEntity entity) {
+        final var threshold = 0.75;
 
-    public static void renderFlame(
-        float tickDelta,
-        MatrixStack matrices,
-        VertexConsumerProvider vertexConsumers,
-        PersistentProjectileEntity entity
-    ) {
-        var sprite = FLAME.getSprite();
+        var world = entity.getWorld();
+        var velocitySq = entity.getVelocity().lengthSquared();
+        var mixin = (PersistentProjectileEntityExt) entity;
 
-        matrices.push();
-
-        matrices.multiply(Axis.Y_POSITIVE.rotationDegrees(MathHelper.lerp(tickDelta, entity.prevYaw, entity.getYaw()) - 90F));
-        matrices.multiply(Axis.Z_POSITIVE.rotationDegrees(MathHelper.lerp(tickDelta, entity.prevPitch, entity.getPitch()) + 90F));
-
-        var age = ((float) entity.age) * 20F;
-        matrices.multiply(Axis.Y_POSITIVE.rotationDegrees(45F - MathHelper.lerp(tickDelta, age - 20F, age)));
-
-        for (var i = 0; i < 4; i++) {
-            var minU = sprite.getMinU();
-            var minV = sprite.getMinV();
-            var maxU = sprite.getMaxU();
-            var maxV = sprite.getMaxV();
-
-            matrices.multiply(Axis.Y_POSITIVE.rotationDegrees(90F));
-
-            var vertices = vertexConsumers.getBuffer(TexturedRenderLayers.getEntityCutout());
-            var entry = matrices.peek();
-            drawFlameVertex(entry, vertices, 0.5F, -0.2F, 0F, maxU, maxV);
-            drawFlameVertex(entry, vertices, -0.5F, -0.2F, 0F, minU, maxV);
-            drawFlameVertex(entry, vertices, -0.5F, 1.4F, -0.4F, minU, minV);
-            drawFlameVertex(entry, vertices, 0.5F, 1.4F, -0.4F, maxU, minV);
-
-            drawFlameVertex(entry, vertices, 0.5F, -0.2F, 0F, maxU, maxV);
-            drawFlameVertex(entry, vertices, -0.5F, -0.2F, 0F, minU, maxV);
-            drawFlameVertex(entry, vertices, -0.5F, 1.4F, 0.4F, minU, minV);
-            drawFlameVertex(entry, vertices, 0.5F, 1.4F, 0.4F, maxU, minV);
-        }
-
-        matrices.pop();
+        return world.isClient
+            && !mixin.inGround()
+            && entity.isOnFire()
+            && (mixin.hadFireTrail() || velocitySq >= Math.pow(threshold, 2));
     }
 
-    private static void drawFlameVertex(MatrixStack.Entry entry, VertexConsumer vertices, float x, float y, float z, float u, float v) {
-        vertices.vertex(entry.getModel(), x, y, z).color(0xFFFFFF).uv(u, v).overlay(0, 10).light(255).normal(entry.getNormal(), 0F, 1F, 0F).next();
+    public static void renderFireTrail(PersistentProjectileEntity entity) {
+        if (!shouldRenderFireTrail(entity)) {
+            ((PersistentProjectileEntityExt) entity).setHadFireTrail(false);
+            return;
+        }
+        ((PersistentProjectileEntityExt) entity).setHadFireTrail(true);
+
+        var world = entity.getWorld();
+        var tickDelta = MinecraftClient.getInstance().getTickDelta();
+        var pos = entity.getLerpedPos(tickDelta).toVector3f();
+        var direction = entity.getVelocity().toVector3f().normalize();
+
+        float pitch = direction.length() == 0F ? 0F : (float) Math.asin(direction.y / direction.length());
+        float yaw = (direction.x == 0F || direction.z == 0F) ? 0F : (float) Math.atan2(direction.z, direction.x);
+
+        var rotation = new Quaternionf();
+
+        rotation.rotateY(-yaw);
+        rotation.rotateZ(pitch);
+
+        var count = world.random.nextInt(3) + (int) entity.getVelocity().length() * 2;
+
+        for (var i = 0; i < count; i++) {
+            var angle = world.random.nextFloat() * (float) Math.PI * 2F;
+
+            var spin = new Quaternionf(rotation).rotateX(angle);
+            var offset = new Vector3f(0, 0, 0.2F)
+                .rotate(spin)
+                .add(pos);
+
+            var particle = new FlameStreakParticleEffect(spin);
+            world.addParticle(particle, true, offset.x, offset.y, offset.z, 0, 0, 0);
+        }
     }
 }
