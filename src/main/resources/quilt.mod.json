@@ -10,7 +10,10 @@
       "contributors": {
         "CodeSquid": "Owner"
       },
-      "contact": {},
+      "contact": {
+        "sources": "https://github.com/TheCodeSquid/touchup",
+        "issues": "https://github.com/TheCodeSquid/touchup/issues"
+      },
       "icon": "assets/touchup/icon.png",
       "license": "MIT"
     },
