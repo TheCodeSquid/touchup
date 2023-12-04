@@ -15,9 +15,8 @@ public class FlameStreakParticle extends SpriteSpatialParticle {
     FlameStreakParticle(ClientWorld world, double x, double y, double z, double velocityX, double velocityY, double velocityZ, SpriteProvider sprites, Quaterniond rotation) {
         super(world, x, y, z, velocityX, velocityY, velocityZ);
 
-        this.scale = 0.3F;
-//        this.maxAge = 10;
-        this.maxAge = (int) (world.random.nextFloat() * 5F + 2F);
+        this.scale = 0.5F;
+        this.maxAge = 20;
 
         var velocity = new Vector3d(0, 0, 0.05).rotate(rotation);
 
@@ -42,7 +41,8 @@ public class FlameStreakParticle extends SpriteSpatialParticle {
     public void tick() {
         super.tick();
         this.setSpriteForAge(this.sprites);
-        this.scale *= 0.9F;
+        this.scale *= 0.8F;
+        this.velocityY += 0.005F;
     }
 
     @Override
